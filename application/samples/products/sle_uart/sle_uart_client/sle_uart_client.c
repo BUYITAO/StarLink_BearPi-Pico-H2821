@@ -88,7 +88,12 @@ static void sle_uart_client_sample_seek_enable_cbk(errcode_t status)
 
 static void sle_uart_client_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
 {
-    osal_printk("%s sle uart scan data :%s\r\n", SLE_UART_CLIENT_LOG, seek_result_data->data);
+    osal_printk("%s sle uart scan data :", SLE_UART_CLIENT_LOG);
+    for (uint8_t i = 0; i < seek_result_data->data_length; i++)
+    {
+        osal_printk("0x%02x ", seek_result_data->data[i]);
+    }
+    osal_printk("\r\n");
     if (seek_result_data == NULL) {
         osal_printk("status error\r\n");
     } else if (strstr((const char *)seek_result_data->data, SLE_UART_SERVER_NAME) != NULL) {
