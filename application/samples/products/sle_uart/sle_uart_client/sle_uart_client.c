@@ -42,6 +42,32 @@ static sle_addr_t g_sle_uart_remote_addr = { 0 };
 ssapc_write_param_t g_sle_uart_send_param = { 0 };
 uint16_t g_sle_uart_conn_id = 0;
 
+static void *send_task(const char *arg)
+{
+    unused(arg);
+    uint8_t data[] = {"send test data"};
+
+    osal_msleep(SLE_UART_TASK_DELAY_MS * 5);
+    while (1)
+    {
+        my_sle_send_data(data, sizeof(data));
+        osal_msleep(SLE_UART_TASK_DELAY_MS);
+    }
+
+    return NULL;
+}
+
+static void create_send_task(void)
+{
+    
+    osal_task *send_task_handle = NULL;
+    send_task_handle = osal_kthread_create((osal_kthread_handler)send_task, 0, "sendTask",
+                                      0x1200);
+    if (send_task_handle != NULL) {
+        osal_kthread_set_priority(send_task_handle, 28);
+    }
+}
+
 uint16_t get_g_sle_uart_conn_id(void)
 {
     return g_sle_uart_conn_id;
@@ -195,6 +221,8 @@ void  sle_uart_client_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_
         info.mtu_size = SLE_MTU_SIZE_DEFAULT;
         info.version = 1;
         ssapc_exchange_info_req(0, g_sle_uart_conn_id, &info);
+
+        create_send_task();
     }
 }
 

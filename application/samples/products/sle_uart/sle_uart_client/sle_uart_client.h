@@ -21,5 +21,6 @@ void sle_uart_client_sample_dev_cbk_register(void);
 ssapc_write_param_t *get_g_sle_uart_send_param(void);
 void sle_uart_notification_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data, errcode_t status);
 void sle_uart_indication_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data, errcode_t status);
+void my_sle_send_data(const uint8_t *buffer, uint16_t length);
 
 #endif
