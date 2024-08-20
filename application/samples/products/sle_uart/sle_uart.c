@@ -107,7 +107,8 @@ static void ssaps_server_write_request_cbk(uint8_t server_id, uint16_t conn_id, 
 {
     osal_printk("%s ssaps write request callback cbk server_id:%x, conn_id:%x, handle:%x, status:%x\r\n",
         SLE_UART_SERVER_LOG, server_id, conn_id, write_cb_para->handle, status);
-    if ((write_cb_para->length > 0) && write_cb_para->value) {
+    if ((write_cb_para->length > 0) && write_cb_para->value)
+    {
         uapi_uart_write(CONFIG_SLE_UART_BUS, (uint8_t *)write_cb_para->value, write_cb_para->length, 0);
     }
 }
@@ -306,7 +307,7 @@ static void *sle_uart_client_task(const char *arg)
 #endif  /* CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT */
 
 /**
- * @brief		SEL UART入口函数（可以认为是代码一运行就调用的函数）
+ * @brief		SEL UART入口函数（可以认为是SDK正常运行后就会调用的函数）
  * @param[in]	none
  * @return      none
  */

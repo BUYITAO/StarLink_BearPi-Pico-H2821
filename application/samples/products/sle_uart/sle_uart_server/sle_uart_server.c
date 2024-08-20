@@ -180,7 +180,9 @@ static errcode_t sle_uuid_server_service_add(void)
 {
     errcode_t ret;
     sle_uuid_t service_uuid = {0};
+    /* 把16bit UUID转换成下面函数所以要的结构体变量 */
     sle_uuid_setu2(SLE_UUID_SERVER_SERVICE, &service_uuid);
+    /* 添加一个ssap服务，并设置成主要服务。 */
     ret = ssaps_add_service_sync(g_server_id, &service_uuid, 1, &g_service_handle);
     if (ret != ERRCODE_SLE_SUCCESS)
     {
@@ -211,6 +213,7 @@ static errcode_t sle_uuid_server_property_add(void)
         osal_vfree(property.value);
         return ERRCODE_SLE_FAIL;
     }
+    /* 添加特征值 */
     ret = ssaps_add_property_sync(g_server_id, g_service_handle, &property,  &g_property_handle);
     if (ret != ERRCODE_SLE_SUCCESS)
     {
@@ -233,6 +236,7 @@ static errcode_t sle_uuid_server_property_add(void)
         osal_vfree(descriptor.value);
         return ERRCODE_SLE_FAIL;
     }
+    /* 添加特征值描述符 */
     ret = ssaps_add_descriptor_sync(g_server_id, g_service_handle, g_property_handle, &descriptor);
     if (ret != ERRCODE_SLE_SUCCESS)
     {
@@ -246,6 +250,11 @@ static errcode_t sle_uuid_server_property_add(void)
     return ERRCODE_SLE_SUCCESS;
 }
 
+/**
+ * @brief		添加服务
+ * @param[in]	none
+ * @return      none
+ */
 static errcode_t sle_uart_server_add(void)
 {
     errcode_t ret;
@@ -257,20 +266,27 @@ static errcode_t sle_uart_server_add(void)
     {
         return ERRCODE_SLE_FAIL;
     }
+    /* 注册SSAP服务，用于透传数据。注册成功会得到g_server_id，后面添加UUID啥的需要 */
     ssaps_register_server(&app_uuid, &g_server_id);
 
+    /* 添加服务UUID */
     if (sle_uuid_server_service_add() != ERRCODE_SLE_SUCCESS)
     {
         ssaps_unregister_server(g_server_id);
         return ERRCODE_SLE_FAIL;
     }
+
+    /* 添加特征值、特征值描述符 */
     if (sle_uuid_server_property_add() != ERRCODE_SLE_SUCCESS)
     {
         ssaps_unregister_server(g_server_id);
         return ERRCODE_SLE_FAIL;
     }
+
     sample_at_log_print("%s sle uart add service, server_id:%x, service_handle:%x, property_handle:%x\r\n",
         SLE_UART_SERVER_LOG, g_server_id, g_service_handle, g_property_handle);
+    
+    /* 开启SSAP服务 */
     ret = ssaps_start_service(g_server_id, g_service_handle);
     if (ret != ERRCODE_SLE_SUCCESS)
     {
@@ -346,6 +362,15 @@ void sle_uart_server_sample_set_mcs(uint16_t conn_id)
     return;
 }
 
+/**
+ * @brief		SEL连接状态改变回调
+ * @param[in]	conn_id：连接ID
+ * @param[in]	addr：mac 地址
+ * @param[in]	conn_state：连接状态
+ * @param[in]	pair_state：配对状态
+ * @param[in]	disc_reason：断开原因
+ * @return      none
+ */
 static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *addr,
     sle_acb_state_t conn_state, sle_pair_state_t pair_state, sle_disc_reason_t disc_reason)
 {
@@ -373,6 +398,13 @@ static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
     }
 }
 
+/**
+ * @brief		SEL配对完成回调
+ * @param[in]	conn_id：连接ID
+ * @param[in]	addr：mac 地址
+ * @param[in]	errcode_t：错误码
+ * @return      none
+ */
 static void sle_pair_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errcode_t status)
 {
     sample_at_log_print("%s pair complete conn_id:%02x, status:%x\r\n", SLE_UART_SERVER_LOG,
@@ -435,15 +467,24 @@ errcode_t sle_uart_server_init(ssaps_read_request_callback ssaps_read_callback, 
     return ERRCODE_SLE_SUCCESS;
 }
 
+/**
+ * @brief		server使能回调
+ * @param[in]	none
+ * @return      none
+ */
 errcode_t sle_enable_server_cbk(void)
 {
     errcode_t ret;
+
+    /* 添加服务 */
     ret = sle_uart_server_add();
     if (ret != ERRCODE_SLE_SUCCESS)
     {
         sample_at_log_print("%s sle_uart_server_init,sle_uart_server_add fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
+
+    /* 初始化ADV */
     ret = sle_uart_server_adv_init();
     if (ret != ERRCODE_SLE_SUCCESS)
     {
