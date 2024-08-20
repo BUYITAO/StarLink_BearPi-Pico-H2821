@@ -33,20 +33,26 @@
 
 static uint8_t g_app_uart_rx_buff[SLE_UART_TRANSFER_SIZE] = { 0 };
 
-static uart_buffer_config_t g_app_uart_buffer_config = {
+static uart_buffer_config_t g_app_uart_buffer_config =
+{
     .rx_buffer = g_app_uart_rx_buff,
     .rx_buffer_size = SLE_UART_TRANSFER_SIZE
 };
 
 static void uart_init_pin(void)
 {
-    if (CONFIG_SLE_UART_BUS == 0) {
+    if (CONFIG_SLE_UART_BUS == 0)
+    {
         uapi_pin_set_mode(CONFIG_UART_TXD_PIN, HAL_PIO_UART_L0_TXD);
         uapi_pin_set_mode(CONFIG_UART_RXD_PIN, HAL_PIO_UART_L0_RXD);       
-    }else if (CONFIG_SLE_UART_BUS == 1) {
+    }
+    else if (CONFIG_SLE_UART_BUS == 1)
+    {
         uapi_pin_set_mode(CONFIG_UART_TXD_PIN, HAL_PIO_UART_H0_TXD);
         uapi_pin_set_mode(CONFIG_UART_RXD_PIN, HAL_PIO_UART_H0_RXD);       
-    }else if (CONFIG_SLE_UART_BUS == 2) {
+    }
+    else if (CONFIG_SLE_UART_BUS == 2)
+    {
         uapi_pin_set_mode(CONFIG_UART_TXD_PIN, HAL_PIO_UART_L1_TXD);
         uapi_pin_set_mode(CONFIG_UART_RXD_PIN, HAL_PIO_UART_L1_RXD);       
     }
@@ -54,14 +60,16 @@ static void uart_init_pin(void)
 
 static void uart_init_config(void)
 {
-    uart_attr_t attr = {
+    uart_attr_t attr =
+    {
         .baud_rate = SLE_UART_BAUDRATE,
         .data_bits = UART_DATA_BIT_8,
         .stop_bits = UART_STOP_BIT_1,
         .parity = UART_PARITY_NONE
     };
 
-    uart_pin_config_t pin_config = {
+    uart_pin_config_t pin_config =
+    {
         .tx_pin = CONFIG_UART_TXD_PIN,
         .rx_pin = CONFIG_UART_RXD_PIN,
         .cts_pin = PIN_NONE,
@@ -113,7 +121,8 @@ uint8_t g_mcs_flag = 0;
 static void sle_uart_server_read_int_handler(const void *buffer, uint16_t length, bool error)
 {
     unused(error);
-    if (sle_uart_client_is_connected()) {
+    if (sle_uart_client_is_connected())
+    {
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
     g_buff_data_valid = 1;
     g_uart_buff_len = 0;
@@ -122,7 +131,9 @@ static void sle_uart_server_read_int_handler(const void *buffer, uint16_t length
 #else
     sle_uart_server_send_report_by_handle(buffer, length);
 #endif
-    } else {
+    }
+    else
+    {
         osal_printk("%s sle client is not connected! \r\n", SLE_UART_SERVER_LOG);
     }
 }
@@ -131,17 +142,20 @@ static void sle_uart_server_read_int_handler(const void *buffer, uint16_t length
 uint8_t *sle_uart_low_latency_tx_cbk(uint16_t *len)
 {
 #ifdef CONFIG_SAMPLE_SUPPORT_PERFORMANCE_TYPE
-    if (g_mcs_flag == 0) {
+    if (g_mcs_flag == 0)
+    {
         sle_uart_server_sample_set_mcs(get_connect_id());
     }
     g_uart_buff_len = SLE_UART_SERVER_SEND_BUFF_MAX_LEN;
     g_buff_data_valid = 1;
     g_mcs_flag = 1;
 #endif
-    if (g_buff_data_valid == 0) {
+    if (g_buff_data_valid == 0)
+    {
         return NULL;
     }
-    if (g_uart_buff_len == 0) {
+    if (g_uart_buff_len == 0)
+    {
         return NULL;
     }
     *len = g_uart_buff_len;
@@ -160,7 +174,8 @@ void sle_uart_low_latency_tx_cbk_register(void)
 static void sle_uart_server_create_msgqueue(void)
 {
     if (osal_msg_queue_create("sle_uart_server_msgqueue", SLE_UART_SERVER_MSG_QUEUE_LEN, \
-        (unsigned long *)&g_sle_uart_server_msgqueue_id, 0, SLE_UART_SERVER_MSG_QUEUE_MAX_SIZE) != OSAL_SUCCESS) {
+        (unsigned long *)&g_sle_uart_server_msgqueue_id, 0, SLE_UART_SERVER_MSG_QUEUE_MAX_SIZE) != OSAL_SUCCESS)
+    {
         osal_printk("^%s sle_uart_server_create_msgqueue message queue create failed!\n", SLE_UART_SERVER_LOG);
     }
 }
@@ -212,16 +227,20 @@ static void *sle_uart_server_task(const char *arg)
     errcode_t ret = uapi_uart_register_rx_callback(CONFIG_SLE_UART_BUS,
                                                    UART_RX_CONDITION_FULL_OR_IDLE,
                                                    1, sle_uart_server_read_int_handler);
-    if (ret != ERRCODE_SUCC) {
+    if (ret != ERRCODE_SUCC)
+    {
         osal_printk("%s Register uart callback fail.[%x]\r\n", SLE_UART_SERVER_LOG, ret);
         return NULL;
     }
-    while (1) {
+    while (1)
+    {
         sle_uart_server_rx_buf_init(rx_buf, &rx_length);
         sle_uart_server_receive_msgqueue(rx_buf, &rx_length);
-        if (strncmp((const char *)rx_buf, (const char *)sle_connect_state, sizeof(sle_connect_state)) == 0) {
+        if (strncmp((const char *)rx_buf, (const char *)sle_connect_state, sizeof(sle_connect_state)) == 0)
+        {
             ret = sle_start_announce(SLE_ADV_HANDLE_DEFAULT);
-            if (ret != ERRCODE_SLE_SUCCESS) {
+            if (ret != ERRCODE_SLE_SUCCESS)
+            {
                 osal_printk("%s sle_connect_state_changed_cbk,sle_start_announce fail :%02x\r\n",
                     SLE_UART_SERVER_LOG, ret);
             }
@@ -276,7 +295,8 @@ static void *sle_uart_client_task(const char *arg)
     errcode_t ret = uapi_uart_register_rx_callback(CONFIG_SLE_UART_BUS,
                                                    UART_RX_CONDITION_FULL_OR_IDLE,
                                                    1, sle_uart_client_read_int_handler);
-    if (ret != ERRCODE_SUCC) {
+    if (ret != ERRCODE_SUCC)
+    {
         osal_printk("Register uart callback fail.");
         return NULL;
     }
@@ -288,9 +308,12 @@ static void *sle_uart_client_task(const char *arg)
 static void sle_uart_entry(void)
 {
     osal_task *task_handle = NULL;
-    if (uapi_clock_control(CLOCK_CONTROL_FREQ_LEVEL_CONFIG, CLOCK_FREQ_LEVEL_HIGH) == ERRCODE_SUCC) {
+    if (uapi_clock_control(CLOCK_CONTROL_FREQ_LEVEL_CONFIG, CLOCK_FREQ_LEVEL_HIGH) == ERRCODE_SUCC)
+    {
         osal_printk("Clock config succ.\r\n");
-    } else {
+    }
+    else
+    {
         osal_printk("Clock config fail.\r\n");
     }
     osal_kthread_lock();
@@ -303,7 +326,8 @@ static void sle_uart_entry(void)
     task_handle = osal_kthread_create((osal_kthread_handler)sle_uart_client_task, 0, "SLEUartDongleTask",
                                       SLE_UART_TASK_STACK_SIZE);
 #endif /* CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT */
-    if (task_handle != NULL) {
+    if (task_handle != NULL)
+    {
         osal_kthread_set_priority(task_handle, SLE_UART_TASK_PRIO);
     }
     osal_kthread_unlock();

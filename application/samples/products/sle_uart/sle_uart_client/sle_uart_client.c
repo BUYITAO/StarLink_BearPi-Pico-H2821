@@ -81,7 +81,8 @@ static void sle_uart_client_sample_sle_enable_cbk(uint8_t status)
 
 static void sle_uart_client_sample_seek_enable_cbk(errcode_t status)
 {
-    if (status != 0) {
+    if (status != 0)
+    {
         osal_printk("%s sle_uart_client_sample_seek_enable_cbk,status error\r\n", SLE_UART_CLIENT_LOG);
     }
 }
@@ -94,9 +95,12 @@ static void sle_uart_client_sample_seek_result_info_cbk(sle_seek_result_info_t *
         osal_printk("0x%02x ", seek_result_data->data[i]);
     }
     osal_printk("\r\n");
-    if (seek_result_data == NULL) {
+    if (seek_result_data == NULL)
+    {
         osal_printk("status error\r\n");
-    } else if (strstr((const char *)seek_result_data->data, SLE_UART_SERVER_NAME) != NULL) {
+    }
+    else if (strstr((const char *)seek_result_data->data, SLE_UART_SERVER_NAME) != NULL)
+    {
         memcpy_s(&g_sle_uart_remote_addr, sizeof(sle_addr_t), &seek_result_data->addr, sizeof(sle_addr_t));
         sle_stop_seek();
     }
@@ -104,9 +108,12 @@ static void sle_uart_client_sample_seek_result_info_cbk(sle_seek_result_info_t *
 
 static void sle_uart_client_sample_seek_disable_cbk(errcode_t status)
 {
-    if (status != 0) {
+    if (status != 0)
+    {
         osal_printk("%s sle_uart_client_sample_seek_disable_cbk,status error = %x\r\n", SLE_UART_CLIENT_LOG, status);
-    } else {
+    }
+    else
+    {
         sle_remove_paired_remote_device(&g_sle_uart_remote_addr);
         sle_connect_remote_device(&g_sle_uart_remote_addr);
     }
@@ -143,7 +150,8 @@ static void sle_uart_client_sample_set_phy_param(void)
     param.rx_pilot_density = 0x2;  // 导频密度16:1
     param.g_feedback = 0;
     param.t_feedback = 0;
-    if (sle_set_phy_param(get_g_sle_uart_conn_id(), &param) != 0) {
+    if (sle_set_phy_param(get_g_sle_uart_conn_id(), &param) != 0)
+    {
         osal_printk("%s sle_set_phy_param fail\r\n", SLE_UART_CLIENT_LOG);
         return;
     }
@@ -163,9 +171,11 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
     unused(pair_state);
     osal_printk("%s conn state changed disc_reason:0x%x\r\n", SLE_UART_CLIENT_LOG, disc_reason);
     g_sle_uart_conn_id = conn_id;
-    if (conn_state == SLE_ACB_STATE_CONNECTED) {
+    if (conn_state == SLE_ACB_STATE_CONNECTED)
+    {
         osal_printk("%s SLE_ACB_STATE_CONNECTED\r\n", SLE_UART_CLIENT_LOG);
-        if (pair_state == SLE_PAIR_NONE) {
+        if (pair_state == SLE_PAIR_NONE)
+        {
             sle_pair_remote_device(&g_sle_uart_remote_addr);
         }
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
@@ -175,13 +185,19 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
         sle_low_latency_set(get_g_sle_uart_conn_id(), true, SLE_UART_LOW_LATENCY_2K);
 #endif
         osal_printk("%s sle_low_latency_rx_enable \r\n", SLE_UART_CLIENT_LOG);
-    } else if (conn_state == SLE_ACB_STATE_NONE) {
+    }
+    else if (conn_state == SLE_ACB_STATE_NONE)
+    {
         osal_printk("%s SLE_ACB_STATE_NONE\r\n", SLE_UART_CLIENT_LOG);
-    } else if (conn_state == SLE_ACB_STATE_DISCONNECTED) {
+    }
+    else if (conn_state == SLE_ACB_STATE_DISCONNECTED)
+    {
         osal_printk("%s SLE_ACB_STATE_DISCONNECTED\r\n", SLE_UART_CLIENT_LOG);
         sle_remove_paired_remote_device(&g_sle_uart_remote_addr);
         sle_uart_start_scan();
-    } else {
+    }
+    else
+    {
         osal_printk("%s status error\r\n", SLE_UART_CLIENT_LOG);
     }
 }
@@ -190,7 +206,8 @@ void  sle_uart_client_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_
 {
     osal_printk("%s pair complete conn_id:%d, addr:%02x***%02x%02x\n", SLE_UART_CLIENT_LOG, conn_id,
                 addr->addr[0], addr->addr[4], addr->addr[5]);
-    if (status == 0) {
+    if (status == 0)
+    {
         ssap_exchange_info_t info = {0};
         info.mtu_size = SLE_MTU_SIZE_DEFAULT;
         info.version = 1;
@@ -285,13 +302,17 @@ void sle_uart_client_low_latency_recv_data_cbk(uint16_t len, uint8_t *value)
 {
 #ifdef CONFIG_SAMPLE_SUPPORT_PERFORMANCE_TYPE
     static uint64_t sle_throughput = 0;
-    if (value == NULL || len == 0) {
+    if (value == NULL || len == 0)
+    {
         return;
     }
     g_sle_recv_count++;
-    if (g_sle_recv_count == 1) {
+    if (g_sle_recv_count == 1)
+    {
         g_sle_recv_start_time = uapi_tcxo_get_us();
-    } else if (g_sle_recv_count == SLE_UART_RECV_CNT) {
+    }
+    else if (g_sle_recv_count == SLE_UART_RECV_CNT)
+    {
         g_sle_recv_end_time = uapi_tcxo_get_us();
         g_sle_recv_param[0] = g_sle_recv_count;
         g_sle_recv_param[1] = g_sle_recv_end_time - g_sle_recv_start_time;

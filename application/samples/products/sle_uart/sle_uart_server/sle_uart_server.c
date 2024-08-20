@@ -66,7 +66,8 @@ static void sle_uuid_set_base(sle_uuid_t *out)
 {
     errcode_t ret;
     ret = memcpy_s(out->uuid, SLE_UUID_LEN, g_sle_uart_base, SLE_UUID_LEN);
-    if (ret != EOK) {
+    if (ret != EOK)
+    {
         sample_at_log_print("%s sle_uuid_set_base memcpy fail\n", SLE_UART_SERVER_LOG);
         out->len = 0;
         return ;
@@ -82,14 +83,18 @@ static void sle_uuid_setu2(uint16_t u2, sle_uuid_t *out)
 }
 static void sle_uart_uuid_print(sle_uuid_t *uuid)
 {
-    if (uuid == NULL) {
+    if (uuid == NULL)
+    {
         sample_at_log_print("%s uuid_print,uuid is null\r\n", SLE_UART_SERVER_LOG);
         return;
     }
-    if (uuid->len == UUID_16BIT_LEN) {
+    if (uuid->len == UUID_16BIT_LEN)
+    {
         sample_at_log_print("%s uuid: %02x %02x.\n", SLE_UART_SERVER_LOG,
             uuid->uuid[14], uuid->uuid[15]); /* 14 15: uuid index */
-    } else if (uuid->len == UUID_128BIT_LEN) {
+    }
+    else if (uuid->len == UUID_128BIT_LEN)
+    {
         sample_at_log_print("%s uuid: \n", SLE_UART_SERVER_LOG); /* 14 15: uuid index */
         sample_at_log_print("%s 0x%02x 0x%02x 0x%02x \n", SLE_UART_SERVER_LOG, uuid->uuid[0], uuid->uuid[1],
             uuid->uuid[2], uuid->uuid[3]);
@@ -107,7 +112,8 @@ static void ssaps_mtu_changed_cbk(uint8_t server_id, uint16_t conn_id,  ssap_exc
 {
     sample_at_log_print("%s ssaps ssaps_mtu_changed_cbk callback server_id:%x, conn_id:%x, mtu_size:%x, status:%x\r\n",
         SLE_UART_SERVER_LOG, server_id, conn_id, mtu_size->mtu_size, status);
-    if (g_sle_pair_hdl == 0) {
+    if (g_sle_pair_hdl == 0)
+    {
         g_sle_pair_hdl = conn_id + 1;
     }
 }
@@ -117,12 +123,14 @@ static void ssaps_start_service_cbk(uint8_t server_id, uint16_t handle, errcode_
     sample_at_log_print("%s start service cbk callback server_id:%d, handle:%x, status:%x\r\n", SLE_UART_SERVER_LOG,
         server_id, handle, status);
 }
+
 static void ssaps_add_service_cbk(uint8_t server_id, sle_uuid_t *uuid, uint16_t handle, errcode_t status)
 {
     sample_at_log_print("%s add service cbk callback server_id:%x, handle:%x, status:%x\r\n", SLE_UART_SERVER_LOG,
         server_id, handle, status);
     sle_uart_uuid_print(uuid);
 }
+
 static void ssaps_add_property_cbk(uint8_t server_id, sle_uuid_t *uuid, uint16_t service_handle,
     uint16_t handle, errcode_t status)
 {
@@ -130,6 +138,7 @@ static void ssaps_add_property_cbk(uint8_t server_id, sle_uuid_t *uuid, uint16_t
         SLE_UART_SERVER_LOG, server_id, service_handle, handle, status);
     sle_uart_uuid_print(uuid);
 }
+
 static void ssaps_add_descriptor_cbk(uint8_t server_id, sle_uuid_t *uuid, uint16_t service_handle,
     uint16_t property_handle, errcode_t status)
 {
@@ -137,11 +146,13 @@ static void ssaps_add_descriptor_cbk(uint8_t server_id, sle_uuid_t *uuid, uint16
         status:%x\r\n", SLE_UART_SERVER_LOG, server_id, service_handle, property_handle, status);
     sle_uart_uuid_print(uuid);
 }
+
 static void ssaps_delete_all_service_cbk(uint8_t server_id, errcode_t status)
 {
     sample_at_log_print("%s delete all service callback server_id:%x, status:%x\r\n", SLE_UART_SERVER_LOG,
         server_id, status);
 }
+
 static errcode_t sle_ssaps_register_cbks(ssaps_read_request_callback ssaps_read_callback, ssaps_write_request_callback
     ssaps_write_callback)
 {
@@ -156,7 +167,8 @@ static errcode_t sle_ssaps_register_cbks(ssaps_read_request_callback ssaps_read_
     ssaps_cbk.read_request_cb = ssaps_read_callback;
     ssaps_cbk.write_request_cb = ssaps_write_callback;
     ret = ssaps_register_callbacks(&ssaps_cbk);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_ssaps_register_cbks,ssaps_register_callbacks fail :%x\r\n", SLE_UART_SERVER_LOG,
             ret);
         return ret;
@@ -170,7 +182,8 @@ static errcode_t sle_uuid_server_service_add(void)
     sle_uuid_t service_uuid = {0};
     sle_uuid_setu2(SLE_UUID_SERVER_SERVICE, &service_uuid);
     ret = ssaps_add_service_sync(g_server_id, &service_uuid, 1, &g_service_handle);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle uuid add service fail, ret:%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ERRCODE_SLE_FAIL;
     }
@@ -188,16 +201,19 @@ static errcode_t sle_uuid_server_property_add(void)
     property.operate_indication = SLE_UUID_TEST_OPERATION_INDICATION;
     sle_uuid_setu2(SLE_UUID_SERVER_NTF_REPORT, &property.uuid);
     property.value = (uint8_t *)osal_vmalloc(sizeof(g_sle_property_value));
-    if (property.value == NULL) {
+    if (property.value == NULL)
+    {
         return ERRCODE_SLE_FAIL;
     }
     if (memcpy_s(property.value, sizeof(g_sle_property_value), g_sle_property_value,
-        sizeof(g_sle_property_value)) != EOK) {
+        sizeof(g_sle_property_value)) != EOK)
+    {
         osal_vfree(property.value);
         return ERRCODE_SLE_FAIL;
     }
     ret = ssaps_add_property_sync(g_server_id, g_service_handle, &property,  &g_property_handle);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle uart add property fail, ret:%x\r\n", SLE_UART_SERVER_LOG, ret);
         osal_vfree(property.value);
         return ERRCODE_SLE_FAIL;
@@ -206,17 +222,20 @@ static errcode_t sle_uuid_server_property_add(void)
     descriptor.type = SSAP_DESCRIPTOR_CLIENT_CONFIGURATION;
     descriptor.operate_indication = SLE_UUID_TEST_OPERATION_INDICATION;
     descriptor.value = (uint8_t *)osal_vmalloc(sizeof(ntf_value));
-    if (descriptor.value == NULL) {
+    if (descriptor.value == NULL)
+    {
         osal_vfree(property.value);
         return ERRCODE_SLE_FAIL;
     }
-    if (memcpy_s(descriptor.value, sizeof(ntf_value), ntf_value, sizeof(ntf_value)) != EOK) {
+    if (memcpy_s(descriptor.value, sizeof(ntf_value), ntf_value, sizeof(ntf_value)) != EOK)
+    {
         osal_vfree(property.value);
         osal_vfree(descriptor.value);
         return ERRCODE_SLE_FAIL;
     }
     ret = ssaps_add_descriptor_sync(g_server_id, g_service_handle, g_property_handle, &descriptor);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle uart add descriptor fail, ret:%x\r\n", SLE_UART_SERVER_LOG, ret);
         osal_vfree(property.value);
         osal_vfree(descriptor.value);
@@ -234,23 +253,27 @@ static errcode_t sle_uart_server_add(void)
 
     sample_at_log_print("%s sle uart add service in\r\n", SLE_UART_SERVER_LOG);
     app_uuid.len = sizeof(g_sle_uuid_app_uuid);
-    if (memcpy_s(app_uuid.uuid, app_uuid.len, g_sle_uuid_app_uuid, sizeof(g_sle_uuid_app_uuid)) != EOK) {
+    if (memcpy_s(app_uuid.uuid, app_uuid.len, g_sle_uuid_app_uuid, sizeof(g_sle_uuid_app_uuid)) != EOK)
+    {
         return ERRCODE_SLE_FAIL;
     }
     ssaps_register_server(&app_uuid, &g_server_id);
 
-    if (sle_uuid_server_service_add() != ERRCODE_SLE_SUCCESS) {
+    if (sle_uuid_server_service_add() != ERRCODE_SLE_SUCCESS)
+    {
         ssaps_unregister_server(g_server_id);
         return ERRCODE_SLE_FAIL;
     }
-    if (sle_uuid_server_property_add() != ERRCODE_SLE_SUCCESS) {
+    if (sle_uuid_server_property_add() != ERRCODE_SLE_SUCCESS)
+    {
         ssaps_unregister_server(g_server_id);
         return ERRCODE_SLE_FAIL;
     }
     sample_at_log_print("%s sle uart add service, server_id:%x, service_handle:%x, property_handle:%x\r\n",
         SLE_UART_SERVER_LOG, g_server_id, g_service_handle, g_property_handle);
     ret = ssaps_start_service(g_server_id, g_service_handle);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle uart add service fail, ret:%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ERRCODE_SLE_FAIL;
     }
@@ -268,18 +291,21 @@ errcode_t sle_uart_server_send_report_by_uuid(const uint8_t *data, uint8_t len)
     param.end_handle = g_property_handle;
     param.value_len = len;
     param.value = (uint8_t *)osal_vmalloc(len);
-    if (param.value == NULL) {
+    if (param.value == NULL)
+    {
         sample_at_log_print("%s send report new fail\r\n", SLE_UART_SERVER_LOG);
         return ERRCODE_SLE_FAIL;
     }
-    if (memcpy_s(param.value, param.value_len, data, len) != EOK) {
+    if (memcpy_s(param.value, param.value_len, data, len) != EOK)
+    {
         sample_at_log_print("%s send input report memcpy fail\r\n", SLE_UART_SERVER_LOG);
         osal_vfree(param.value);
         return ERRCODE_SLE_FAIL;
     }
     sle_uuid_setu2(SLE_UUID_SERVER_NTF_REPORT, &param.uuid);
     ret = ssaps_notify_indicate_by_uuid(g_server_id, g_sle_conn_hdl, &param);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_send_report_by_uuid,ssaps_notify_indicate_by_uuid fail :%x\r\n",
             SLE_UART_SERVER_LOG, ret);
         osal_vfree(param.value);
@@ -298,7 +324,8 @@ errcode_t sle_uart_server_send_report_by_handle(const uint8_t *data, uint16_t le
     param.type = SSAP_PROPERTY_TYPE_VALUE;
     param.value = receive_buf;
     param.value_len = len;
-    if (memcpy_s(param.value, param.value_len, data, len) != EOK) {
+    if (memcpy_s(param.value, param.value_len, data, len) != EOK)
+    {
         return ERRCODE_SLE_FAIL;
     }
     return ssaps_notify_indicate(g_server_id, g_sle_conn_hdl, &param);
@@ -327,16 +354,20 @@ static void sle_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *ad
         disc_reason:0x%x\r\n", SLE_UART_SERVER_LOG,conn_id, conn_state, pair_state, disc_reason);
     sample_at_log_print("%s connect state changed callback addr:%02x:**:**:**:%02x:%02x\r\n", SLE_UART_SERVER_LOG,
         addr->addr[BT_INDEX_0], addr->addr[BT_INDEX_4]);
-    if (conn_state == SLE_ACB_STATE_CONNECTED) {
+    if (conn_state == SLE_ACB_STATE_CONNECTED)
+    {
         g_sle_conn_hdl = conn_id;
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
         sle_low_latency_tx_enable();
         osal_printk("%s sle_low_latency_tx_enable \r\n", SLE_UART_SERVER_LOG);
 #endif
-    } else if (conn_state == SLE_ACB_STATE_DISCONNECTED) {
+    }
+    else if (conn_state == SLE_ACB_STATE_DISCONNECTED)
+    {
         g_sle_conn_hdl = 0;
         g_sle_pair_hdl = 0;
-        if (g_sle_uart_server_msg_queue != NULL) {
+        if (g_sle_uart_server_msg_queue != NULL)
+        {
             g_sle_uart_server_msg_queue(sle_connect_state, sizeof(sle_connect_state));
         }
     }
@@ -362,7 +393,8 @@ static errcode_t sle_conn_register_cbks(void)
     conn_cbks.connect_state_changed_cb = sle_connect_state_changed_cbk;
     conn_cbks.pair_complete_cb = sle_pair_complete_cbk;
     ret = sle_connection_register_callbacks(&conn_cbks);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_conn_register_cbks,sle_connection_register_callbacks fail :%x\r\n",
         SLE_UART_SERVER_LOG, ret);
         return ret;
@@ -381,18 +413,21 @@ errcode_t sle_uart_server_init(ssaps_read_request_callback ssaps_read_callback, 
 {
     errcode_t ret;
     ret = sle_uart_announce_register_cbks();
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_init,sle_uart_announce_register_cbks fail :%x\r\n",
         SLE_UART_SERVER_LOG, ret);
         return ret;
     }
     ret = sle_conn_register_cbks();
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_init,sle_conn_register_cbks fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
     ret = sle_ssaps_register_cbks(ssaps_read_callback, ssaps_write_callback);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_init,sle_ssaps_register_cbks fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
@@ -404,12 +439,14 @@ errcode_t sle_enable_server_cbk(void)
 {
     errcode_t ret;
     ret = sle_uart_server_add();
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_init,sle_uart_server_add fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
     ret = sle_uart_server_adv_init();
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_uart_server_init,sle_uart_server_adv_init fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
         return ret;
     }
