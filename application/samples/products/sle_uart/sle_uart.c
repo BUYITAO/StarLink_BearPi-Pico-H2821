@@ -305,9 +305,16 @@ static void *sle_uart_client_task(const char *arg)
 }
 #endif  /* CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT */
 
+/**
+ * @brief		SEL UART入口函数（可以认为是代码一运行就调用的函数）
+ * @param[in]	none
+ * @return      none
+ */
 static void sle_uart_entry(void)
 {
     osal_task *task_handle = NULL;
+
+    /* 配置时钟，MCU时钟频率配置为64M */
     if (uapi_clock_control(CLOCK_CONTROL_FREQ_LEVEL_CONFIG, CLOCK_FREQ_LEVEL_HIGH) == ERRCODE_SUCC)
     {
         osal_printk("Clock config succ.\r\n");
@@ -316,20 +323,33 @@ static void sle_uart_entry(void)
     {
         osal_printk("Clock config fail.\r\n");
     }
+
+    /* 锁定任务调度（为了避免别的task调度，干扰下面TASK的创建？） */
     osal_kthread_lock();
 #if defined(CONFIG_SAMPLE_SUPPORT_SLE_UART_SERVER)
+    /* 注册sel server部分的回调函数 */
     sle_dev_register_cbks();
+    /* 创建server demo的task */
     task_handle = osal_kthread_create((osal_kthread_handler)sle_uart_server_task, 0, "SLEUartServerTask",
                                       SLE_UART_TASK_STACK_SIZE);
 #elif defined(CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT)
+    /* 注册sel client部分的回调函数 */
     sle_uart_client_sample_dev_cbk_register();
+    /* 创建client demo的task */
     task_handle = osal_kthread_create((osal_kthread_handler)sle_uart_client_task, 0, "SLEUartDongleTask",
                                       SLE_UART_TASK_STACK_SIZE);
 #endif /* CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT */
+    
     if (task_handle != NULL)
     {
+        /* 如果TASK创建成功，设置task优先级 */
         osal_kthread_set_priority(task_handle, SLE_UART_TASK_PRIO);
     }
+    else
+    {
+        osal_printk("sel uart task create fail!!!\r\n");
+    }
+    /* 解锁任务调度 */
     osal_kthread_unlock();
 }
 

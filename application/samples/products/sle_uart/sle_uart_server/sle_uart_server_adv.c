@@ -236,12 +236,14 @@ errcode_t sle_dev_register_cbks(void)
     dev_mgr_cbks.sle_power_on_cb = sle_power_on_cbk;
     dev_mgr_cbks.sle_enable_cb = sle_enable_cbk;
     ret = sle_dev_manager_register_callbacks(&dev_mgr_cbks);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_dev_register_cbks,register_callbacks fail :%x\r\n",
             SLE_UART_SERVER_LOG, ret);
         return ret;
     }
 #if (CORE_NUMS < 2)
+    /* 开启SLE */
     enable_sle();
 #endif
     return ERRCODE_SLE_SUCCESS;
