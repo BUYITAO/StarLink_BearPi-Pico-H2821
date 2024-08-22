@@ -52,8 +52,14 @@ ssapc_write_param_t *get_g_sle_uart_send_param(void)
     return &g_sle_uart_send_param;
 }
 
+/**
+ * @brief		开SCNA
+ * @param[in]	none
+ * @return      none
+ */
 void sle_uart_start_scan(void)
 {
+    /* 配置scan参数 */
     sle_seek_param_t param = { 0 };
     param.own_addr_type = 0;
     param.filter_duplicates = 0;
@@ -63,19 +69,32 @@ void sle_uart_start_scan(void)
     param.seek_interval[0] = SLE_SEEK_INTERVAL_DEFAULT;
     param.seek_window[0] = SLE_SEEK_WINDOW_DEFAULT;
     sle_set_seek_param(&param);
+    /* 开始SCAN */
     sle_start_seek();
 }
 
+/**
+ * @brief		SEL上电回调
+ * @param[in]	status：状态，具体含义未知
+ * @return      none
+ */
 static void sle_uart_client_sample_sle_power_on_cbk(uint8_t status)
 {
     osal_printk("sle power on: %d.\r\n", status);
     enable_sle();
 }
 
+/**
+ * @brief		SEL使能回调
+ * @param[in]	status：状态，具体含义未知
+ * @return      none
+ */
 static void sle_uart_client_sample_sle_enable_cbk(uint8_t status)
 {
     osal_printk("sle enable: %d.\r\n", status);
+    /* client初始化 */
     sle_uart_client_init(sle_uart_notification_cb, sle_uart_indication_cb);
+    /* 开启SCAN */
     sle_uart_start_scan();
 }
 
@@ -87,25 +106,43 @@ static void sle_uart_client_sample_seek_enable_cbk(errcode_t status)
     }
 }
 
+/**
+ * @brief		SELSCAN收到数据回调
+ * @param[in]	seek_result_data：收到数据相关的结构体变量
+ * @return      none
+ */
 static void sle_uart_client_sample_seek_result_info_cbk(sle_seek_result_info_t *seek_result_data)
 {
+    /* 指针判空保护（demo放在下面，应该放在最上面，不然打印一用就完蛋） */
+    if (seek_result_data == NULL)
+    {
+        osal_printk("status error\r\n");
+        return;
+    }
+
+    /* 打印SCAN到的ADV数据 */
     osal_printk("%s sle uart scan data :", SLE_UART_CLIENT_LOG);
     for (uint8_t i = 0; i < seek_result_data->data_length; i++)
     {
         osal_printk("0x%02x ", seek_result_data->data[i]);
     }
     osal_printk("\r\n");
-    if (seek_result_data == NULL)
+
+    /* 收到的数据和目标设备的作对比 */
+    if (strstr((const char *)seek_result_data->data, SLE_UART_SERVER_NAME) != NULL)
     {
-        osal_printk("status error\r\n");
-    }
-    else if (strstr((const char *)seek_result_data->data, SLE_UART_SERVER_NAME) != NULL)
-    {
+        /* 如果对上了，把MAC保存到g_sle_uart_remote_addr中，待会儿连接使用 */
         memcpy_s(&g_sle_uart_remote_addr, sizeof(sle_addr_t), &seek_result_data->addr, sizeof(sle_addr_t));
+        /* 停止SCAN */
         sle_stop_seek();
     }
 }
 
+/**
+ * @brief		SEL SCAN停止回调
+ * @param[in]	status：状态
+ * @return      none
+ */
 static void sle_uart_client_sample_seek_disable_cbk(errcode_t status)
 {
     if (status != 0)
@@ -114,11 +151,20 @@ static void sle_uart_client_sample_seek_disable_cbk(errcode_t status)
     }
     else
     {
+        /* 删除之前配对过的设备（为了避免冲突？） */
         sle_remove_paired_remote_device(&g_sle_uart_remote_addr);
+        /* 连接设备 */
         sle_connect_remote_device(&g_sle_uart_remote_addr);
     }
 }
 
+/**
+ * @brief		SEL设备回调函数注册
+ * @param[in]	conn_id：连接ID
+ * @param[in]	addr：mac 地址
+ * @param[in]	errcode_t：错误码
+ * @return      none
+ */
 void sle_uart_client_sample_dev_cbk_register(void)
 {
     g_sle_dev_mgr_cbk.sle_power_on_cb = sle_uart_client_sample_sle_power_on_cbk;
@@ -129,11 +175,16 @@ void sle_uart_client_sample_dev_cbk_register(void)
 #endif
 }
 
+/**
+ * @brief		SLE client SCAN相关cb注册
+ * @param[in]   none
+ * @return      none
+ */
 static void sle_uart_client_sample_seek_cbk_register(void)
 {
-    g_sle_uart_seek_cbk.seek_enable_cb = sle_uart_client_sample_seek_enable_cbk;
-    g_sle_uart_seek_cbk.seek_result_cb = sle_uart_client_sample_seek_result_info_cbk;
-    g_sle_uart_seek_cbk.seek_disable_cb = sle_uart_client_sample_seek_disable_cbk;
+    g_sle_uart_seek_cbk.seek_enable_cb = sle_uart_client_sample_seek_enable_cbk;    /* 开启SCAN回调 */
+    g_sle_uart_seek_cbk.seek_result_cb = sle_uart_client_sample_seek_result_info_cbk;   /* SCAN收到一包数据回调 */
+    g_sle_uart_seek_cbk.seek_disable_cb = sle_uart_client_sample_seek_disable_cbk;  /* SCAN停止回调 */
     sle_announce_seek_register_callbacks(&g_sle_uart_seek_cbk);
 }
 
@@ -163,6 +214,15 @@ static void sle_uart_client_sample_set_phy_param(void)
 }
 #endif
 
+/**
+ * @brief		SLE client 连接状态改变
+ * @param[in]   conn_id    连接 ID。
+ * @param[in]   addr       地址。
+ * @param[in]   conn_state 连接状态 { @ref sle_acb_state_t }。
+ * @param[in]   pair_state 配对状态 { @ref sle_pair_state_t }。
+ * @param[in]   disc_reason 断链原因 { @ref sle_disc_reason_t }。
+ * @return      none
+ */
 static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, const sle_addr_t *addr,
                                                              sle_acb_state_t conn_state, sle_pair_state_t pair_state,
                                                              sle_disc_reason_t disc_reason)
@@ -171,11 +231,14 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
     unused(pair_state);
     osal_printk("%s conn state changed disc_reason:0x%x\r\n", SLE_UART_CLIENT_LOG, disc_reason);
     g_sle_uart_conn_id = conn_id;
+    /* 已经连上 */
     if (conn_state == SLE_ACB_STATE_CONNECTED)
     {
         osal_printk("%s SLE_ACB_STATE_CONNECTED\r\n", SLE_UART_CLIENT_LOG);
+        /* 配对状态是未配对 */
         if (pair_state == SLE_PAIR_NONE)
         {
+            /* 开始配对 */
             sle_pair_remote_device(&g_sle_uart_remote_addr);
         }
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
@@ -183,25 +246,37 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
         osal_msleep(SLE_UART_TASK_DELAY_MS);
         sle_low_latency_rx_enable();
         sle_low_latency_set(get_g_sle_uart_conn_id(), true, SLE_UART_LOW_LATENCY_2K);
-#endif
-        osal_printk("%s sle_low_latency_rx_enable \r\n", SLE_UART_CLIENT_LOG);
+        osal_printk("%s sle_low_latency_rx_enable \r\n", SLE_UART_CLIENT_LOG);      //这句话应该在这儿，不应该放外面
+#endif  
     }
+    /* 未连接（还能有未连接？怎么会有这种状态？） */
     else if (conn_state == SLE_ACB_STATE_NONE)
     {
         osal_printk("%s SLE_ACB_STATE_NONE\r\n", SLE_UART_CLIENT_LOG);
     }
+    /* 断连 */
     else if (conn_state == SLE_ACB_STATE_DISCONNECTED)
     {
         osal_printk("%s SLE_ACB_STATE_DISCONNECTED\r\n", SLE_UART_CLIENT_LOG);
+        /* 移除配对设备 */
         sle_remove_paired_remote_device(&g_sle_uart_remote_addr);
+        /* 再次开启SCAN */
         sle_uart_start_scan();
     }
+    /* 其他未知情况 */
     else
     {
         osal_printk("%s status error\r\n", SLE_UART_CLIENT_LOG);
     }
 }
 
+/**
+ * @brief		SLE client pair完成回调
+ * @param[in]   conn_id 连接 ID。
+ * @param[in]   addr    地址。
+ * @param[in]   status  执行结果错误码。
+ * @return      none
+ */
 void  sle_uart_client_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_t *addr, errcode_t status)
 {
     osal_printk("%s pair complete conn_id:%d, addr:%02x***%02x%02x\n", SLE_UART_CLIENT_LOG, conn_id,
@@ -211,14 +286,20 @@ void  sle_uart_client_sample_pair_complete_cbk(uint16_t conn_id, const sle_addr_
         ssap_exchange_info_t info = {0};
         info.mtu_size = SLE_MTU_SIZE_DEFAULT;
         info.version = 1;
+        /* 请求交换SSAP信息 */
         ssapc_exchange_info_req(0, g_sle_uart_conn_id, &info);
     }
 }
 
+/**
+ * @brief		SLE client 连接相关cb注册
+ * @param[in]   none
+ * @return      none
+ */
 static void sle_uart_client_sample_connect_cbk_register(void)
 {
-    g_sle_uart_connect_cbk.connect_state_changed_cb = sle_uart_client_sample_connect_state_changed_cbk;
-    g_sle_uart_connect_cbk.pair_complete_cb =  sle_uart_client_sample_pair_complete_cbk;
+    g_sle_uart_connect_cbk.connect_state_changed_cb = sle_uart_client_sample_connect_state_changed_cbk; /* 连接状态改变回调 */
+    g_sle_uart_connect_cbk.pair_complete_cb =  sle_uart_client_sample_pair_complete_cbk;                /* pair完成回调 */
     sle_connection_register_callbacks(&g_sle_uart_connect_cbk);
 }
 
@@ -233,6 +314,7 @@ static void sle_uart_client_sample_exchange_info_cbk(uint8_t client_id, uint16_t
     find_param.type = SSAP_FIND_TYPE_PROPERTY;
     find_param.start_hdl = 1;
     find_param.end_hdl = 0xFFFF;
+    /* 开始查找SSAP服务、特征值等 */
     ssapc_find_structure(0, conn_id, &find_param);
 }
 
@@ -269,6 +351,14 @@ static void sle_uart_client_sample_find_structure_cmp_cbk(uint8_t client_id, uin
                 SLE_UART_CLIENT_LOG, client_id, status, structure_result->type, structure_result->uuid.len);
 }
 
+/**
+ * @brief		SLE client 收到写响应的回调函数（write数据成功回调）
+ * @param[in]   client_id    客户端 ID。
+ * @param[in]   conn_id      连接 ID。
+ * @param[in]   write_result 写结果。
+ * @param[in]   status       执行结果错误码。
+ * @return      none
+ */
 static void sle_uart_client_sample_write_cfm_cb(uint8_t client_id, uint16_t conn_id,
                                                 ssapc_write_result_t *write_result, errcode_t status)
 {
@@ -276,14 +366,20 @@ static void sle_uart_client_sample_write_cfm_cb(uint8_t client_id, uint16_t conn
                 SLE_UART_CLIENT_LOG, conn_id, client_id, status, write_result->handle, write_result->type);
 }
 
+/**
+ * @brief		SLE client ssap服务注册的回调
+ * @param[in]   notification_cb：收到notify数据的回调
+ * @param[in]   indication_cb：收到indicate数据的回调
+ * @return      none
+ */
 static void sle_uart_client_sample_ssapc_cbk_register(ssapc_notification_callback notification_cb,
                                                       ssapc_notification_callback indication_cb)
 {
-    g_sle_uart_ssapc_cbk.exchange_info_cb = sle_uart_client_sample_exchange_info_cbk;
-    g_sle_uart_ssapc_cbk.find_structure_cb = sle_uart_client_sample_find_structure_cbk;
-    g_sle_uart_ssapc_cbk.ssapc_find_property_cbk = sle_uart_client_sample_find_property_cbk;
-    g_sle_uart_ssapc_cbk.find_structure_cmp_cb = sle_uart_client_sample_find_structure_cmp_cbk;
-    g_sle_uart_ssapc_cbk.write_cfm_cb = sle_uart_client_sample_write_cfm_cb;
+    g_sle_uart_ssapc_cbk.exchange_info_cb = sle_uart_client_sample_exchange_info_cbk;   /* mtu改变的回调 */
+    g_sle_uart_ssapc_cbk.find_structure_cb = sle_uart_client_sample_find_structure_cbk; /* 发现服务的回调 */
+    g_sle_uart_ssapc_cbk.ssapc_find_property_cbk = sle_uart_client_sample_find_property_cbk;    /* 发现特征值的回调 */
+    g_sle_uart_ssapc_cbk.find_structure_cmp_cb = sle_uart_client_sample_find_structure_cmp_cbk; /* 发现全部特征值完成的回调 */
+    g_sle_uart_ssapc_cbk.write_cfm_cb = sle_uart_client_sample_write_cfm_cb;    /* 收到写响应的回调函数，可以认为发送成功 */
     g_sle_uart_ssapc_cbk.notification_cb = notification_cb;
     g_sle_uart_ssapc_cbk.indication_cb = indication_cb;
     ssapc_register_callbacks(&g_sle_uart_ssapc_cbk);
@@ -340,11 +436,17 @@ void sle_uart_client_low_latency_recv_data_cbk_register(void)
 }
 #endif
 
+/**
+ * @brief		SLE client 使用的各种cb注册
+ * @param[in]   notification_cb：收到notify数据的回调
+ * @param[in]   indication_cb：收到indicate数据的回调
+ * @return      none
+ */
 void sle_uart_client_init(ssapc_notification_callback notification_cb, ssapc_indication_callback indication_cb)
 {
-    sle_uart_client_sample_seek_cbk_register();
-    sle_uart_client_sample_connect_cbk_register();
-    sle_uart_client_sample_ssapc_cbk_register(notification_cb, indication_cb);
+    sle_uart_client_sample_seek_cbk_register(); /* SCAN相关的cb注册 */
+    sle_uart_client_sample_connect_cbk_register();  /* 连接先关的cb注册 */
+    sle_uart_client_sample_ssapc_cbk_register(notification_cb, indication_cb);  /* SSAP服务相关的cb注册 */
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
     sle_uart_client_low_latency_recv_data_cbk_register();
 #endif

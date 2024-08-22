@@ -253,22 +253,40 @@ static void *sle_uart_server_task(const char *arg)
 }
 #elif defined(CONFIG_SAMPLE_SUPPORT_SLE_UART_CLIENT)
 
+/**
+ * @brief		SLE client收到notify回调
+ * @param[in]   client_id 客户端 ID。？？？没明白什么意思
+ * @param[in]   conn_id   连接 ID。
+ * @param[in]   data      数据。
+ * @param[in]   status    执行结果错误码。
+ * @return      none
+ */
 void sle_uart_notification_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data,
     errcode_t status)
 {
     unused(client_id);
     unused(conn_id);
     unused(status);
+    /* 把收到的数据打印出来 */
     osal_printk("\n sle uart recived data : %s\r\n", data->data);
     uapi_uart_write(CONFIG_SLE_UART_BUS, (uint8_t *)(data->data), data->data_len, 0);
 }
 
+/**
+ * @brief		SLE client收到indicate回调
+ * @param[in]   client_id 客户端 ID。？？？没明白什么意思
+ * @param[in]   conn_id   连接 ID。
+ * @param[in]   data      数据。
+ * @param[in]   status    执行结果错误码。
+ * @return      none
+ */
 void sle_uart_indication_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_value_t *data,
     errcode_t status)
 {
     unused(client_id);
     unused(conn_id);
     unused(status);
+    /* 把收到的数据打印出来 */
     osal_printk("\n sle uart recived data : %s\r\n", data->data);
     uapi_uart_write(CONFIG_SLE_UART_BUS, (uint8_t *)(data->data), data->data_len, 0);
 }
