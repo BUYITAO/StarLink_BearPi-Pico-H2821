@@ -303,6 +303,14 @@ static void sle_uart_client_sample_connect_cbk_register(void)
     sle_connection_register_callbacks(&g_sle_uart_connect_cbk);
 }
 
+/**
+ * @brief		SLE client MTU交互完成回调
+ * @param[in]   client_id 客户端 ID。
+ * @param[in]   conn_id   连接 ID。
+ * @param[in]   param     交换信息。
+ * @param[in]   status    执行结果错误码。
+ * @return      none
+ */
 static void sle_uart_client_sample_exchange_info_cbk(uint8_t client_id, uint16_t conn_id, ssap_exchange_info_t *param,
                                                      errcode_t status)
 {
