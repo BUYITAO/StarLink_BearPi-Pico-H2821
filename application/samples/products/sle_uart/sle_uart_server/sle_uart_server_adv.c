@@ -127,6 +127,11 @@ static uint16_t sle_set_scan_response_data(uint8_t *scan_rsp_data)
     return idx;
 }
 
+/**
+ * @brief		设置adv参数
+ * @param[in]	none
+ * @return      none
+ */
 static int sle_set_default_announce_param(void)
 {
     errno_t ret;
@@ -146,18 +151,25 @@ static int sle_set_default_announce_param(void)
     param.conn_supervision_timeout = SLE_CONN_SUPERVISION_TIMEOUT_DEFAULT;
     param.own_addr.type = 0;
     ret = memcpy_s(param.own_addr.addr, SLE_ADDR_LEN, local_addr, SLE_ADDR_LEN);
-    if (ret != EOK) {
+    if (ret != EOK)
+    {
         sample_at_log_print("%s sle_set_default_announce_param data memcpy fail\r\n", SLE_UART_SERVER_LOG);
         return 0;
     }
     sample_at_log_print("%s sle_uart_local addr: ", SLE_UART_SERVER_LOG);
-    for (index = 0; index < SLE_ADDR_LEN; index++) {
+    for (index = 0; index < SLE_ADDR_LEN; index++)
+    {
         sample_at_log_print("0x%02x ", param.own_addr.addr[index]);
     }
     sample_at_log_print("\r\n");
     return sle_set_announce_param(param.announce_handle, &param);
 }
 
+/**
+ * @brief		设置adv data
+ * @param[in]	none
+ * @return      none
+ */
 static int sle_set_default_announce_data(void)
 {
     errcode_t ret;
@@ -169,32 +181,40 @@ static int sle_set_default_announce_data(void)
     uint8_t seek_rsp_data[SLE_ADV_DATA_LEN_MAX] = {0};
     uint8_t data_index = 0;
 
+    /* 组装ADV数据 */
     announce_data_len = sle_set_adv_data(announce_data);
     data.announce_data = announce_data;
     data.announce_data_len = announce_data_len;
 
     sample_at_log_print("%s data.announce_data_len = %d\r\n", SLE_UART_SERVER_LOG, data.announce_data_len);
     sample_at_log_print("%s data.announce_data: ", SLE_UART_SERVER_LOG);
-    for (data_index = 0; data_index<data.announce_data_len; data_index++) {
+    for (data_index = 0; data_index<data.announce_data_len; data_index++)
+    {
         sample_at_log_print("0x%02x ", data.announce_data[data_index]);
     }
     sample_at_log_print("\r\n");
 
+    /* 组装scan rsp数据 */
     seek_data_len = sle_set_scan_response_data(seek_rsp_data);
     data.seek_rsp_data = seek_rsp_data;
     data.seek_rsp_data_len = seek_data_len;
 
     sample_at_log_print("%s data.seek_rsp_data_len = %d\r\n", SLE_UART_SERVER_LOG, data.seek_rsp_data_len);
     sample_at_log_print("%s data.seek_rsp_data: ", SLE_UART_SERVER_LOG);
-    for (data_index = 0; data_index<data.seek_rsp_data_len; data_index++) {
+    for (data_index = 0; data_index<data.seek_rsp_data_len; data_index++)
+    {
         sample_at_log_print("0x%02x ", data.seek_rsp_data[data_index]);
     }
     sample_at_log_print("\r\n");
 
+    /* 设置adv数据 */
     ret = sle_set_announce_data(adv_handle, &data);
-    if (ret == ERRCODE_SLE_SUCCESS) {
+    if (ret == ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s set announce data success.\r\n", SLE_UART_SERVER_LOG);
-    } else {
+    }
+    else
+    {
         sample_at_log_print("%s set adv param fail.\r\n", SLE_UART_SERVER_LOG);
     }
     return ERRCODE_SLE_SUCCESS;
@@ -217,18 +237,33 @@ static void sle_announce_terminal_cbk(uint32_t announce_id)
     sample_at_log_print("%s sle announce terminal callback id:%02x\r\n", SLE_UART_SERVER_LOG, announce_id);
 }
 
+/**
+ * @brief		SEL上电回调
+ * @param[in]	status：状态，具体含义未知
+ * @return      none
+ */
 static void sle_power_on_cbk(uint8_t status)
 {
     sample_at_log_print("sle power on: %d\r\n", status);
     enable_sle();
 }
 
+/**
+ * @brief		SEL使能回调
+ * @param[in]	status：状态，具体含义未知
+ * @return      none
+ */
 static void sle_enable_cbk(uint8_t status)
 {
     sample_at_log_print("sle enable: %d\r\n", status);
     sle_enable_server_cbk();
 }
 
+/**
+ * @brief		注册SEL的回调函数
+ * @param[in]	none
+ * @return      errcode_t
+ */
 errcode_t sle_dev_register_cbks(void)
 {
     errcode_t ret = 0;
@@ -236,12 +271,14 @@ errcode_t sle_dev_register_cbks(void)
     dev_mgr_cbks.sle_power_on_cb = sle_power_on_cbk;
     dev_mgr_cbks.sle_enable_cb = sle_enable_cbk;
     ret = sle_dev_manager_register_callbacks(&dev_mgr_cbks);
-    if (ret != ERRCODE_SLE_SUCCESS) {
+    if (ret != ERRCODE_SLE_SUCCESS)
+    {
         sample_at_log_print("%s sle_dev_register_cbks,register_callbacks fail :%x\r\n",
             SLE_UART_SERVER_LOG, ret);
         return ret;
     }
 #if (CORE_NUMS < 2)
+    /* SLE使能 */
     enable_sle();
 #endif
     return ERRCODE_SLE_SUCCESS;
@@ -263,11 +300,20 @@ errcode_t sle_uart_announce_register_cbks(void)
     return ERRCODE_SLE_SUCCESS;
 }
 
+/**
+ * @brief		server端adv初始化
+ * @param[in]	none
+ * @return      errcode_t
+ */
 errcode_t sle_uart_server_adv_init(void)
 {
     errcode_t ret;
+    /* 设置ADV参数 */
     sle_set_default_announce_param();
+    /* 设置ADV data */
     sle_set_default_announce_data();
+
+    /* 开始ADV */
     ret = sle_start_announce(SLE_ADV_HANDLE_DEFAULT);
     if (ret != ERRCODE_SLE_SUCCESS) {
         sample_at_log_print("%s sle_uart_server_adv_init,sle_start_announce fail :%x\r\n", SLE_UART_SERVER_LOG, ret);
