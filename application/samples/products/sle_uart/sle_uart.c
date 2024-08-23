@@ -291,7 +291,7 @@ void sle_uart_indication_cb(uint8_t client_id, uint16_t conn_id, ssapc_handle_va
     uapi_uart_write(CONFIG_SLE_UART_BUS, (uint8_t *)(data->data), data->data_len, 0);
 }
 
-void my_sle_send_data(const uint8_t *buffer, uint16_t length)
+void my_sle_send_data(const char *buffer, uint16_t length)
 {
     ssapc_write_param_t *sle_uart_send_param = get_g_sle_uart_send_param();
     uint16_t g_sle_uart_conn_id = get_g_sle_uart_conn_id();

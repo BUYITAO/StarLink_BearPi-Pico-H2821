@@ -19,6 +19,7 @@
 #ifdef CONFIG_SAMPLE_SUPPORT_LOW_LATENCY_TYPE
 #include "sle_low_latency.h"
 #endif
+#include <stdio.h>
 #define SLE_MTU_SIZE_DEFAULT            520
 #define SLE_SEEK_INTERVAL_DEFAULT       100
 #define SLE_SEEK_WINDOW_DEFAULT         100
@@ -32,6 +33,8 @@
 #define SLE_UART_SERVER_NAME            "sle_uart_server"
 #endif
 #define SLE_UART_CLIENT_LOG             "[sle uart client]"
+#define SLE_SEND_CNT_MAX                10000
+
 
 static ssapc_find_service_result_t g_sle_uart_find_service_result = { 0 };
 static sle_dev_manager_callbacks_t g_sle_dev_mgr_cbk = { 0 };
@@ -41,17 +44,41 @@ static ssapc_callbacks_t g_sle_uart_ssapc_cbk = { 0 };
 static sle_addr_t g_sle_uart_remote_addr = { 0 };
 ssapc_write_param_t g_sle_uart_send_param = { 0 };
 uint16_t g_sle_uart_conn_id = 0;
+uint8_t g_sle_connect_state = 0;
+osal_task *send_task_handle = NULL;
+
+
+static void destroy_send_task(void);
+
 
 static void *send_task(const char *arg)
 {
+    int send_cnt = 1;
     unused(arg);
-    uint8_t data[] = {"send test data"};
+    char data[34] = {"send test data, send cnt = 000000"};
 
-    osal_msleep(SLE_UART_TASK_DELAY_MS * 5);
+    /* delay 5s，保证发现SSAP特征值等业务跑完 */
+    osal_msleep(1000 * 5);
     while (1)
     {
-        my_sle_send_data(data, sizeof(data));
-        osal_msleep(SLE_UART_TASK_DELAY_MS);
+        osal_printk("send task running\r\n");
+        /* 检查一下是否连上 */
+        if (g_sle_connect_state == 1)
+        {
+            snprintf(data, sizeof(data), "send test data, send cnt = %06d", send_cnt);
+            osal_printk("send cnt = %06d\r\n", send_cnt);
+            my_sle_send_data(data, sizeof(data) - 1);
+            send_cnt++;
+        }
+        /* delay 500ms */
+        osal_msleep(500);
+
+        /* 判断是否发送到max */
+        if (send_cnt > SLE_SEND_CNT_MAX)
+        {
+            osal_printk("******send test data over******\r\n");
+            destroy_send_task();
+        }
     }
 
     return NULL;
@@ -59,13 +86,17 @@ static void *send_task(const char *arg)
 
 static void create_send_task(void)
 {
-    
-    osal_task *send_task_handle = NULL;
     send_task_handle = osal_kthread_create((osal_kthread_handler)send_task, 0, "sendTask",
                                       0x1200);
-    if (send_task_handle != NULL) {
+    if (send_task_handle != NULL)
+    {
         osal_kthread_set_priority(send_task_handle, 28);
     }
+}
+
+static void destroy_send_task(void)
+{
+    osal_kthread_destroy(send_task_handle, 0);
 }
 
 uint16_t get_g_sle_uart_conn_id(void)
@@ -260,6 +291,7 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
     /* 已经连上 */
     if (conn_state == SLE_ACB_STATE_CONNECTED)
     {
+        g_sle_connect_state = 1;
         osal_printk("%s SLE_ACB_STATE_CONNECTED\r\n", SLE_UART_CLIENT_LOG);
         /* 配对状态是未配对 */
         if (pair_state == SLE_PAIR_NONE)
@@ -283,6 +315,8 @@ static void sle_uart_client_sample_connect_state_changed_cbk(uint16_t conn_id, c
     /* 断连 */
     else if (conn_state == SLE_ACB_STATE_DISCONNECTED)
     {
+        g_sle_connect_state = 0;
+        destroy_send_task();
         osal_printk("%s SLE_ACB_STATE_DISCONNECTED\r\n", SLE_UART_CLIENT_LOG);
         /* 移除配对设备 */
         sle_remove_paired_remote_device(&g_sle_uart_remote_addr);
