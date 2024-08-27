@@ -34,6 +34,8 @@
 #endif
 #define SLE_UART_CLIENT_LOG             "[sle uart client]"
 #define SLE_SEND_CNT_MAX                10000
+#define SLE_SEND_TASK_PRIO              28
+#define SLE_SEND_TASK_STACK_SIZE        0x1200
 
 
 static ssapc_find_service_result_t g_sle_uart_find_service_result = { 0 };
@@ -87,10 +89,10 @@ static void *send_task(const char *arg)
 static void create_send_task(void)
 {
     send_task_handle = osal_kthread_create((osal_kthread_handler)send_task, 0, "sendTask",
-                                      0x1200);
+                                      SLE_SEND_TASK_STACK_SIZE);
     if (send_task_handle != NULL)
     {
-        osal_kthread_set_priority(send_task_handle, 28);
+        osal_kthread_set_priority(send_task_handle, SLE_SEND_TASK_PRIO);
     }
 }
 
